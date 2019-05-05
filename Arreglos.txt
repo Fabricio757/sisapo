@@ -1,0 +1,75 @@
+create or replace Procedure RH_ACTUALIZAINSTANCIA
+(
+  pRequest in varchar2,
+  pIdPersonal integer,
+  pIdObra in integer,
+  pIdUsuario in integer
+)
+as
+BEGIN
+  DECLARE ObraAnterior integer;
+          InstanciaAnterior integer;
+          IdAnterior integer;
+          fechaDesdeAnterior date;
+          MaxHasta date;
+          iError integer;
+BEGIN
+  IF pRequest = 'CREATE' then
+    insert into rh_instancia (descripcion, idpersonal, Instancia, fdesde, fhasta, idobra)
+    values ('', pIdPersonal, 0, trunc(sysdate), null, pIdObra); 
+    
+    Insert into RH_instancia_log(IDINSTANCIA,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,OPERACION,FECHA,IDUSUARIO,IDOBRA) 
+    select ID,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,'ALTA',sysdate,PIDUSUARIO,IDOBRA from RH_INSTANCIA WHERE ID = (select max(id) from rh_instancia);
+    
+  else
+    select Id, Idobra, Instancia, fDesde into IdAnterior, ObraAnterior, InstanciaAnterior, fechaDesdeAnterior from rh_Ultimainstancia where IdPersonal = pIdPersonal;
+
+      select max(fhasta) + 1 into MaxHasta from rh_instancia where IDPERSONAL = pIdPersonal;
+      
+      if trunc(sysdate) > MaxHasta or MaxHasta is null then 
+        MaxHasta := trunc(sysdate);
+      end if;
+
+    
+    if pRequest = 'REINGRESO' then
+      insert into rh_instancia (descripcion, idpersonal, Instancia, fdesde, fhasta, idobra) values ('', pIdPersonal, InstanciaAnterior + 1, MaxHasta, null, pIdObra);      
+          Insert into RH_instancia_log(IDINSTANCIA,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,OPERACION,FECHA,IDUSUARIO,IDOBRA) select ID,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,'ALTA',sysdate,PIDUSUARIO,IDOBRA from RH_INSTANCIA WHERE ID = (select max(id) from rh_instancia);
+    else
+      if pRequest = 'DESVINCULAR' then
+          update RH_instancia set fhasta = maxHasta where id = IdAnterior;
+                  Insert into RH_instancia_log(IDINSTANCIA,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,OPERACION,FECHA,IDUSUARIO,IDOBRA) select ID,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,'ALTA',sysdate,PIDUSUARIO,IDOBRA from RH_INSTANCIA WHERE ID = IdAnterior;
+
+      else
+      
+DBMS_OUTPUT.PUT_LINE('SAVE');
+
+        if pIdObra <> ObraAnterior then
+          if fechaDesdeAnterior < trunc(sysdate) then
+            update RH_instancia set fhasta = trunc(sysdate -1 ) where id = IdAnterior;  
+                    Insert into RH_instancia_log(IDINSTANCIA,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,OPERACION,FECHA,IDUSUARIO,IDOBRA) select ID,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,'Modifica',sysdate,PIDUSUARIO,IDOBRA from RH_INSTANCIA WHERE ID = IdAnterior;
+
+            insert into rh_instancia (descripcion, idpersonal, Instancia, fdesde, fhasta, idobra)
+            values ('', pIdPersonal, InstanciaAnterior, trunc(sysdate), null, pIdObra);
+                    Insert into RH_instancia_log(IDINSTANCIA,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,OPERACION,FECHA,IDUSUARIO,IDOBRA) select ID,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,'ALTA',sysdate,PIDUSUARIO,IDOBRA from RH_INSTANCIA WHERE ID = (select max(id) from rh_instancia);
+          else
+            update RH_instancia set IdObra = pIdObra where id = IdAnterior;  
+                  Insert into RH_instancia_log(IDINSTANCIA,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,OPERACION,FECHA,IDUSUARIO,IDOBRA) select ID,DESCRIPCION,IDPERSONAL,INSTANCIA,FDESDE,FHASTA,'Modifica',sysdate,PIDUSUARIO,IDOBRA from RH_INSTANCIA WHERE ID = IdAnterior;
+          end if;
+        end if;
+      end if;        
+    end if;    
+    
+  end if;
+
+  
+  select count(1) into iError from rh_instancia I1 where I1.idPersonal  = pIdPersonal 
+  and exists 
+  (select 1 from rh_instancia I2 where ((I2.fdesde <= I1.fdesde and I1.fdesde <= I2.fhasta) or (I2.fdesde <= I1.fhasta and I1.fhasta <= I2.fhasta)) and I1.IdPersonal = I2.IdPersonal and I1.Id <> I2.id);
+  
+  
+  if iError > 0 then
+  raise_application_error (-20100, 'Error: Superposición de Instancias. Verifique los rangos de fechas');
+  end if;
+
+END;
+END;

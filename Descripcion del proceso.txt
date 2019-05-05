@@ -1,0 +1,50 @@
+﻿	
+-------------------------------------------
+Cargo con ID disjuntos
+
+En la importación válido por dni o por dni, fecha
+
+Si hay Colision duplico, informo y que corrijan
+____________________________________________________
+
+
+Arreglos en Alta de Personal
+
+Saldo de Franco y Vacaciones = 0
+Mensaje de Ok, corregir
+Action Processed.Instancia Actualizada o creada
+
+NO permimitir alta de ciudades en Esclavos.
+
+Borrado Fisico.
+_______________________
+
+
+
+Para un Servidor Esclavo nuevo.
+
+1- Hacer un copia del Maestro
+
+2- Secuencias a las que hay que configurarles el Last_number
+
+RH_PERSONAL_SEQ
+RH_PERSONAL_LOG_ID_SEQ
+RH_INSTANCIA_ID_SEQ
+RH_INSTANCIA_LOG_ID_SEQ
+
+RH_PERSONAL_LOG_LT
+RH_INSTANCIA_LOG_LT
+
+999999999999999999999999
+100000000000000000000000
+
+3- Crear un Lote de Inicio
+
+insert into RH_SINCRONIZACIONES values (1, 0, null, null, 0, sysdate, 26, sysdate, 1);
+commit;
+
+No usar el Servidor Maestro en este proceso, y aconsejablemente no usar otro Esclavo.
+
+Correrlo en Servidor Maestro y en Servidor Esclavo.
+
+ 
